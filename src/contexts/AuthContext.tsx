@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { auth } from "@/firebase/config";
 import { User, onAuthStateChanged, signOut } from "firebase/auth";
 import AlertInfo from "@/components/AlertInfo";
@@ -10,11 +10,6 @@ interface AuthContextType {
   loading: boolean;
   showAlert: (message: string) => void;
 }
-
-const AUTHORIZED_EMAILS = [
-  "carlleoneribeiro@hotmail.com",
-  "angel.enfermeira192@hotmail.com",
-];
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -26,16 +21,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-
-  let sessionTimeout: NodeJS.Timeout;
+  const sessionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const startSessionTimer = () => {
-    clearTimeout(sessionTimeout);
-    sessionTimeout = setTimeout(() => {
+    if (sessionTimeout.current) clearTimeout(sessionTimeout.current);
+    sessionTimeout.current = setTimeout(() => {
       setUser(null);
       signOut(auth);
       setAlertMessage("Sua sessão expirou devido à inatividade.");
-    }, 20 * 60 * 1000);
+    }, 20 * 60 * 1000); // 20 minutos
   };
 
   const showAlert = (message: string) => setAlertMessage(message);
@@ -47,22 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (firebaseUser) {
         startSessionTimer();
-
-        // Verifica se o usuário tem liberação
-        if (!AUTHORIZED_EMAILS.includes(firebaseUser.email || "")) {
-          showAlert(
-            "Excelente! você cadastrou, Agora entre em contato com o administrador."
-          );
-
-          signOut(auth);
-        }
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Reset timer quando houver interação do usuário
+  // Reinicia o timer ao detectar atividade
   useEffect(() => {
     const resetTimer = () => {
       if (user) startSessionTimer();
