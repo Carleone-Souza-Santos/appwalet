@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Configuração do Firebase (exposta no front-end)
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDomFFQlxR4CPADvsRlLdDr3yFFLrITXP0",
   authDomain: "financas-349ed.firebaseapp.com",
