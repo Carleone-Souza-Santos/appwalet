@@ -17,7 +17,7 @@ import FinancialStatus from "./VerificModal";
 import BestMonthStatus from "./VerificMothGood";
 
 const Container = styled.div`
-  max-width: 900px;
+  max-width: 1000px;
   margin: 20px auto;
   position: relative;
   left: -80px;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "firebase/auth";
@@ -24,23 +24,22 @@ const Container = styled.header<{ fixed?: boolean }>`
   backdrop-filter: blur(8px);
   display: flex;
   justify-content: space-between;
-  align-items: center; /* <-- centraliza verticalmente */
+  align-items: center;
   color: #fff;
   z-index: 999;
   transition: background 0.4s ease;
 `;
 
 const Logo = styled.h1`
-  color:#3c6579;
+  color: #3c6579;
   font-size: 1.2rem;
   font-weight: 500;
   letter-spacing: 1px;
 `;
 
-/* Wrapper pros botões ficarem juntos */
 const ButtonGroup = styled.div`
   display: flex;
-  gap: 12px; /* espaçamento entre os botões */
+  gap: 12px;
 `;
 
 const IconButton = styled.button`
@@ -63,23 +62,19 @@ const IconButton = styled.button`
 `;
 
 export default function Header() {
-  const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const { user, loading } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleLogout = async () => {
     await signOut(auth);
   };
 
-  if (!mounted) return null;
+  if (loading) return null;
 
   return (
     <Container>
       <Logo>Wall</Logo>
+
 
       {user && (
         <>
