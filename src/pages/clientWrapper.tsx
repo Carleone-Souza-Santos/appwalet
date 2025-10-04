@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAuth, AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import CircularLoader from "@/components/CircularLoader";
 import Header from "@/components/Header";
 
@@ -17,7 +17,6 @@ export default function ClientWrapper({ children }: Props) {
   );
 }
 
-// Esse componente interno só depende do contexto, então é client component
 function InnerClientWrapper({ children }: Props) {
   const { user, loading } = useAuth();
 

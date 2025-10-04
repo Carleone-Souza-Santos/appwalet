@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { auth } from "@/firebase/config";
 import { User, onAuthStateChanged, signOut } from "firebase/auth";
 import AlertInfo from "@/components/AlertInfo";
@@ -35,11 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const showAlert = (message: string) => setAlertMessage(message);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
 
       if (firebaseUser) {
+        await firebaseUser.getIdToken(true); // força refresh do token
         startSessionTimer();
       }
     });
@@ -47,7 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  // Reinicia o timer ao detectar atividade
   useEffect(() => {
     const resetTimer = () => {
       if (user) startSessionTimer();
