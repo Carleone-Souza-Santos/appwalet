@@ -9,12 +9,12 @@ import styled from "styled-components";
 
 // Container que ocupa 100% da tela sem scroll
 const Container = styled.div`
-  height: 100vh; /* altura total da viewport */
-  width: 100vw; /* largura total */
+  height: 100vh;
+  width: 100vw;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden; /* remove scroll */
+  overflow: hidden;
   background: 
     linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
     url('/assets/contract.png') center/cover no-repeat;
@@ -115,8 +115,19 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const router = useRouter();
 
+  // Emails liberados pelo administrador no .env
+  const AUTHORIZED_EMAILS = (process.env.NEXT_PUBLIC_AUTH_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim());
+
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
+
+    if (!AUTHORIZED_EMAILS.includes(email)) {
+      alert("Você ainda não foi liberado pelo administrador. Entre em contato com ele.");
+      return;
+    }
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/dashboard");
@@ -128,6 +139,11 @@ export default function Login() {
   const handleForgotPassword = async () => {
     if (!email) {
       alert("Digite seu e-mail para receber o link de redefinição de senha.");
+      return;
+    }
+
+    if (!AUTHORIZED_EMAILS.includes(email)) {
+      alert("Você ainda não foi liberado pelo administrador. Não é possível redefinir a senha.");
       return;
     }
 

@@ -1,8 +1,5 @@
-// src/app/layout.tsx
 import "../styles/globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
 import ClientWrapper from "../pages/clientWrapper";
-
 
 export const metadata = {
   title: "Wallet App",
@@ -13,11 +10,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body>
-        <AuthProvider>
-          <ClientWrapper>
-            {children}
-          </ClientWrapper>
-        </AuthProvider>
+        {/* Todo estado/Context do client deve ficar aqui */}
+        <ClientWrapper>
+          {children}
+        </ClientWrapper>
       </body>
     </html>
   );
