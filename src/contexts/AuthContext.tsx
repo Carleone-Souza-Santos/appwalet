@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { auth } from "@/firebase/config";
 import { User, onAuthStateChanged, signOut } from "firebase/auth";
-import AlertInfo from "@/components/AlertInfo"; // import do modal alert
+import AlertInfo from "@/components/AlertInfo";
 
 interface AuthContextType {
   user: User | null;
@@ -11,14 +11,22 @@ interface AuthContextType {
   showAlert: (message: string) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true, showAlert: () => { } });
+// Lê do .env e cria array
+const AUTHORIZED_EMAILS = (process.env.NEXT_PUBLIC_AUTH_EMAILS || "")
+  .split(",")
+  .map(email => email.trim());
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  showAlert: () => { },
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
-  // Timeout de 20 minutos (20 * 60 * 1000)
   let sessionTimeout: NodeJS.Timeout;
 
   const startSessionTimer = () => {
@@ -26,17 +34,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionTimeout = setTimeout(() => {
       setUser(null);
       signOut(auth);
-      // Mostra modal de logout
       setAlertMessage("Sua sessão expirou devido à inatividade.");
     }, 20 * 60 * 1000);
   };
+
+  const showAlert = (message: string) => setAlertMessage(message);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
 
-      if (firebaseUser) startSessionTimer();
+      if (firebaseUser) {
+        startSessionTimer();
+
+        // Verifica se o usuário tem liberação
+        if (!AUTHORIZED_EMAILS.includes(firebaseUser.email || "")) {
+          showAlert(
+            "Excelente! você cadastrou, Agora entre em contato com o administrador."
+          );
+
+          signOut(auth);
+        }
+      }
     });
 
     return () => unsubscribe();
@@ -56,12 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
-  const showAlert = (message: string) => setAlertMessage(message);
-
   return (
     <AuthContext.Provider value={{ user, loading, showAlert }}>
       {children}
-      {alertMessage && <AlertInfo message={alertMessage} onClose={() => setAlertMessage(null)} />}
+      {alertMessage && (
+        <AlertInfo message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
     </AuthContext.Provider>
   );
 }

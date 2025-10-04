@@ -7,17 +7,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import styled from "styled-components";
 
-// Container centralizado com imagem de fundo
+// Container que ocupa 100% da tela sem scroll
 const Container = styled.div`
+  height: 100vh; /* altura total da viewport */
+  width: 100vw; /* largura total */
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  align-items: center;
+  overflow: hidden; /* remove scroll */
   background: 
     linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
     url('/assets/contract.png') center/cover no-repeat;
-  padding: 20px;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 `;
 
 // Caixa do login

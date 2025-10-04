@@ -1,4 +1,5 @@
-// src/components/SidebarIcons.tsx
+"use client";
+
 import React from "react";
 import styled from "styled-components";
 import { FaCreditCard, FaUniversity, FaChartLine, FaWallet, FaShoppingCart } from "react-icons/fa";
@@ -28,7 +29,7 @@ const IconButton = styled.button<{ color?: string }>`
   cursor: pointer;
   color: ${({ color }) => color || "#628292"};
   font-size: 1.5rem;
-  transition: all 0.3s ease; /* transição suave de cor e transformação */
+  transition: all 0.3s ease;
 
   &:hover {
     transform: scale(1.2);
@@ -42,7 +43,7 @@ const ValueLabel = styled.span<{ negative?: boolean }>`
   color: ${({ negative }) => (negative ? "#F44336" : "#628292")};
   text-align: center;
   white-space: nowrap;
-  transition: color 0.3s ease; /* transição suave da cor do texto */
+  transition: color 0.3s ease;
 `;
 
 interface SidebarIconsProps {
@@ -75,6 +76,9 @@ const SidebarIcons: React.FC<SidebarIconsProps> = ({
   const corCarteira = percentualGasto > 55 ? "#F44336" : "#628292";
   const corGrafico = percentualGasto > 55 ? "#F44336" : "#628292";
 
+  // Função para decidir se o label é negativo ou não (retorna true ou undefined)
+  const isNegative = (value: boolean) => (value ? true : undefined);
+
   return (
     <SidebarContainer>
       {icons.map((iconObj, i) => (
@@ -86,12 +90,12 @@ const SidebarIcons: React.FC<SidebarIconsProps> = ({
           {iconObj.component}
 
           {i === 0 && (
-            <ValueLabel negative={corCarteira === "#F44336"}>
+            <ValueLabel negative={isNegative(corCarteira === "#F44336")}>
               R$ {totalGanhoAno.toFixed(2)}
             </ValueLabel>
           )}
           {i === 1 && (
-            <ValueLabel negative={percentualGasto > 55}>
+            <ValueLabel negative={isNegative(percentualGasto > 55)}>
               R$ {totalGastoAno.toFixed(2)}
             </ValueLabel>
           )}
@@ -101,7 +105,7 @@ const SidebarIcons: React.FC<SidebarIconsProps> = ({
             </ValueLabel>
           )}
           {i === 3 && (
-            <ValueLabel negative={percentualGasto > 55}>
+            <ValueLabel negative={isNegative(percentualGasto > 55)}>
               {percentualGasto.toFixed(0)}% gasto
             </ValueLabel>
           )}
