@@ -11,10 +11,10 @@ interface AuthContextType {
   showAlert: (message: string) => void;
 }
 
-// Lê do .env e cria array
-const AUTHORIZED_EMAILS = (process.env.NEXT_PUBLIC_AUTH_EMAILS || "")
-  .split(",")
-  .map(email => email.trim());
+const AUTHORIZED_EMAILS = [
+  "carlleoneribeiro@hotmail.com",
+  "angel.enfermeira192@hotmail.com",
+];
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
