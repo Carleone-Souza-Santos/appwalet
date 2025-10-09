@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useMemo, useEffect } from "react";
 import styled from "styled-components";
 import {
@@ -10,6 +12,9 @@ import {
   CartesianGrid,
 } from "recharts";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../firebase/config";
+import { useAuth } from "../contexts/AuthContext";
 
 const Box = styled.div`
   background: #fff;
@@ -66,31 +71,73 @@ interface MonthData {
   gasto: number;
   deposito?: number;
   economia: number;
+  dividas?: number; // agora sim
 }
+
+
 
 interface Props {
   data: MonthData[];
 }
 
 export const FinancialAnalysisBox: React.FC<Props> = ({ data }) => {
+  const { user } = useAuth();
   const [mesesSelecionados, setMesesSelecionados] = useState<number>(12);
   const [chartKey, setChartKey] = useState<number>(0);
+  const [dataComDividas, setDataComDividas] = useState<MonthData[]>(data);
 
-  // Atualiza o gráfico a cada 10 segundos
   useEffect(() => {
-    const interval = setInterval(() => {
-      setChartKey(prev => prev + 1);
-    }, 10000);
+    const interval = setInterval(() => setChartKey(prev => prev + 1), 10000);
     return () => clearInterval(interval);
   }, []);
 
-  if (!data || data.length === 0) return null;
+  // ==== Buscar dividas do Firestore ====
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchDividas = async () => {
+      const mesesOrdem = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      const dividasRef = collection(db, "dividas");
+      const q = query(dividasRef, where("userId", "==", user.uid));
+      const snapshot = await getDocs(q);
+
+      const dividasPorMes: Record<string, number> = {};
+
+      snapshot.docs.forEach(doc => {
+        const d = doc.data() as any;
+
+        // Converte timestamp Firestore para Date
+        let date: Date;
+        if (d.data?.toDate) {
+          date = d.data.toDate();               // Timestamp Firestore
+        } else if (d.data instanceof Object && d.data.seconds) {
+          date = new Date(d.data.seconds * 1000); // outro formato de timestamp
+        } else {
+          date = new Date(d.data);              // string ou Date
+        }
+
+        const mes = mesesOrdem[date.getMonth()];
+        dividasPorMes[mes] = (dividasPorMes[mes] || 0) + (d.valor || 0);
+      });
+
+
+      // Atualiza os dados
+      const newData = data.map(d => ({
+        ...d,
+        dividas: dividasPorMes[d.mes] || 0
+      }));
+
+      setDataComDividas(newData);
+    };
+
+    fetchDividas();
+  }, [user, data]);
 
   const mesesOrdem = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
   const dataOrdenada = useMemo(() => {
-    return [...data].sort((a, b) => mesesOrdem.indexOf(a.mes) - mesesOrdem.indexOf(b.mes));
-  }, [data]);
+    return [...dataComDividas].sort((a, b) => mesesOrdem.indexOf(a.mes) - mesesOrdem.indexOf(b.mes));
+  }, [dataComDividas]);
 
   const dataFiltrada = useMemo(() => {
     const totalMeses = Math.min(mesesSelecionados, dataOrdenada.length);
@@ -112,6 +159,9 @@ export const FinancialAnalysisBox: React.FC<Props> = ({ data }) => {
   const maiorEconomia = Math.max(...dataFiltrada.map(d => d.economia));
   const mesMaiorEconomia = dataFiltrada.find(d => d.economia === maiorEconomia)?.mes || "";
 
+  const maiorDivida = Math.max(...dataFiltrada.map(d => d.dividas || 0));
+  const mesMaiorDivida = dataFiltrada.find(d => (d.dividas || 0) === maiorDivida)?.mes || "";
+
   const getTrendIcon = (current: number, previous: number | null) => {
     if (previous === null) return null;
     return current >= previous ? <FaArrowUp color="#4CAF50" /> : <FaArrowDown color="#F44336" />;
@@ -121,10 +171,7 @@ export const FinancialAnalysisBox: React.FC<Props> = ({ data }) => {
     <Box>
       <Header>
         <div>Análise últimos {mesesSelecionados} mês(es)</div>
-        <Select
-          value={mesesSelecionados}
-          onChange={(e) => setMesesSelecionados(Number(e.target.value))}
-        >
+        <Select value={mesesSelecionados} onChange={(e) => setMesesSelecionados(Number(e.target.value))}>
           {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
             <option key={m} value={m}>{m} mês(es)</option>
           ))}
@@ -152,14 +199,15 @@ export const FinancialAnalysisBox: React.FC<Props> = ({ data }) => {
           <strong style={{ color: "#2196F3" }}>R$ {maiorEconomia.toFixed(2)}</strong>
           <div>{mesMaiorEconomia}</div>
         </StatItem>
+        <StatItem>
+          <div>Maior Dívida</div>
+          <strong style={{ color: "#FF9800" }}>R$ {maiorDivida.toFixed(2)}</strong>
+          <div>{mesMaiorDivida}</div>
+        </StatItem>
       </Stats>
 
       <ResponsiveContainer width="100%" height={100}>
-        <LineChart
-          key={chartKey} // chave que força atualização a cada 10s
-          data={dataFiltrada}
-          margin={{ top: 10, right: 15, left: 0, bottom: 0 }}
-        >
+        <LineChart key={chartKey} data={dataFiltrada} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
           <XAxis dataKey="mes" />
           <YAxis />
@@ -170,6 +218,7 @@ export const FinancialAnalysisBox: React.FC<Props> = ({ data }) => {
                 const economiaAnterior = payload.find(p => p.dataKey === "economia")?.payload?.prevEconomia ?? null;
                 const trendIcon = getTrendIcon(economiaAtual, economiaAnterior);
                 const depositoAtual = payload.find(p => p.dataKey === "deposito")?.value ?? 0;
+                const dividasAtual = payload.find(p => p.dataKey === "dividas")?.value ?? 0;
                 return (
                   <div style={{ background: "#fff", padding: 6, border: "1px solid #ccc", borderRadius: 4, fontSize: "0.85rem" }}>
                     <div><strong>{label}</strong> {trendIcon}</div>
@@ -177,6 +226,7 @@ export const FinancialAnalysisBox: React.FC<Props> = ({ data }) => {
                     <div>Gasto: <strong style={{ color: "#F44336" }}>R$ {payload.find(p => p.dataKey === "gasto")?.value}</strong></div>
                     <div>Depósito: <strong style={{ color: "#9C27B0" }}>R$ {depositoAtual}</strong></div>
                     <div>Economia: <strong style={{ color: "#2196F3" }}>R$ {economiaAtual}</strong></div>
+                    <div>Dívida: <strong style={{ color: "#FF9800" }}>R$ {dividasAtual}</strong></div>
                   </div>
                 );
               }
@@ -187,6 +237,7 @@ export const FinancialAnalysisBox: React.FC<Props> = ({ data }) => {
           <Line type="monotone" dataKey="gasto" stroke="#F44336" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
           <Line type="monotone" dataKey="deposito" stroke="#9C27B0" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
           <Line type="monotone" dataKey="economia" stroke="#2196F3" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+          <Line type="monotone" dataKey="dividas" stroke="#FF9800" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>
     </Box>

@@ -1,8 +1,9 @@
+// src/components/DashboardContent.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase/config";
-import { collection, query, where, getDocs, orderBy, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { TransactionsSidebar } from "./MonthCard";
 import KPICards from "./KPICards";
@@ -15,12 +16,40 @@ import SidebarIcons from "./SidebarIcons";
 import MonthlyPieChart from "./GastosMensaisChart";
 import FinancialStatus from "./VerificModal";
 import BestMonthStatus from "./VerificMothGood";
+import AvaliacCustumDashboard from "@/components/AvaliacCustumDashboard";
+import DividaWrapper from "./DividaWrapper";
+
+const Wrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 150px; 
+`;
 
 const Container = styled.div`
-  max-width: 1000px;
-  margin: 20px auto;
+  max-width: 1050px;
+  margin: 65px auto;
   position: relative;
-  left: -80px;
+  left: -110px;
+
+  @media (max-width: 1280px) {
+    max-width: 900px;
+    left: -40px;
+  }
+
+  @media (max-width: 1024px) {
+    max-width: 95%;
+    left: 0;
+    margin: 50px auto;
+    padding: 0 10px;
+  }
+
+  @media (max-width: 768px) {
+    max-width: 100%;
+    left: 0;
+    margin: 40px auto;
+    padding: 0 15px;
+  }
 `;
 
 const FilterContainer = styled.div`
@@ -59,7 +88,7 @@ const NumberInput = styled.input`
 const GraficosContainer = styled.div`
   display: flex;
   gap: 20px;
-  margin-bottom: 20px;
+  margin-bottom: 50px;
 `;
 
 const DashboardContent: React.FC = () => {
@@ -70,7 +99,7 @@ const DashboardContent: React.FC = () => {
   const [mesSelecionado, setMesSelecionado] = useState<number>(new Date().getMonth());
   const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear());
 
-
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchTransacoes = async () => {
     if (!user) return;
@@ -129,13 +158,16 @@ const DashboardContent: React.FC = () => {
     return { name: mes, value: totalGastoMes };
   }).filter(d => d.value > 0);
 
-  const onDeleteTransaction = async (id: string) => {
+  const handleEditTransaction = async (id: string, novoValor: number) => {
     try {
-      await deleteDoc(doc(db, "transacoes", id));
-      setTransacoes(prev => prev.filter(t => t.id !== id));
+      const transRef = doc(db, "transacoes", id);
+      await updateDoc(transRef, { valor: novoValor });
+      setTransacoes(prev =>
+        prev.map(t => (t.id === id ? { ...t, valor: novoValor } : t))
+      );
+      setEditingId(null);
     } catch (error) {
-      console.error("Erro ao excluir:", error);
-      alert("Erro ao excluir transação.");
+      console.error("Erro ao atualizar transação:", error);
     }
   };
 
@@ -153,6 +185,12 @@ const DashboardContent: React.FC = () => {
       <TransacaoForm refresh={refresh} />
       <KPICards saldo={saldo} ganhos={ganhos} gastos={gastos} parcelas={parcelas} />
 
+      <AvaliacCustumDashboard
+        mesSelecionado={mesSelecionado}
+        anoSelecionado={anoSelecionado}
+        transacoes={transacoes}
+      />
+
       <FilterContainer>
         <Select value={mesSelecionado} onChange={(e) => setMesSelecionado(Number(e.target.value))}>
           {meses.map((mes, i) => <option key={i} value={i}>{mes}</option>)}
@@ -160,38 +198,84 @@ const DashboardContent: React.FC = () => {
         <NumberInput type="number" value={anoSelecionado} min={2000} max={2100} onChange={(e) => setAnoSelecionado(Number(e.target.value))} />
       </FilterContainer>
 
-      <BestMonthStatus transacoes={transacoes} anoSelecionado={anoSelecionado} />
+      {/* CORREÇÃO AQUI: bgColor removido, usando style */}
+      <BestMonthStatus
+        transacoes={transacoes}
+        anoSelecionado={anoSelecionado}
+        style={{ backgroundColor: "#F0F0F0" }} // ajuste a cor conforme sua lógica
+      />
 
       <FinancialStatus transacoes={transacoes} mesSelecionado={mesSelecionado} anoSelecionado={anoSelecionado} />
 
       <GraficosContainer>
-        <div style={{ width: 150, height: 150 }}>
-          <MonthlyPieChart transacoes={transacoes} mesSelecionado={mesSelecionado} anoSelecionado={anoSelecionado} />
-        </div>
+        <Wrapper>
+          <MonthlyPieChart
+            transacoes={transacoes}
+            mesSelecionado={mesSelecionado}
+            anoSelecionado={anoSelecionado}
+          />
+        </Wrapper>
 
         <div style={{ flex: 1, height: 150 }}>
           <BarResponsiveContainer width="100%" height="100%">
-            <BarChart data={graficoData} margin={{ top: 15, right: 15, left: 0, bottom: 0 }}>
-              <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "#666" }} axisLine={{ stroke: "#ccc" }} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: "#666" }} axisLine={{ stroke: "#ccc" }} tickLine={false} />
-              <BarTooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: 6, padding: 8 }} itemStyle={{ color: "#333", fontWeight: 300 }} />
-              <Bar dataKey="ganho" fill="#4CAF50" radius={[4, 4, 0, 0]} barSize={20} />
-              <Bar dataKey="gasto" fill="#F44336" radius={[4, 4, 0, 0]} barSize={20} />
-              <Bar dataKey="deposito" fill="#9C27B0" radius={[4, 4, 0, 0]} barSize={20} />
+            <BarChart
+              data={graficoData}
+              margin={{ top: 15, right: 15, left: 0, bottom: 0 }}
+              barCategoryGap="25%"
+            >
+              <XAxis
+                dataKey="mes"
+                tick={{ fontSize: 12, fill: "#888" }}
+                axisLine={{ stroke: "#ccc", strokeWidth: 1 }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 12, fill: "#888" }}
+                axisLine={{ stroke: "#ccc", strokeWidth: 1 }}
+                tickLine={false}
+              />
+              <BarTooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
+                  padding: 8,
+                }}
+                itemStyle={{ color: "#333", fontWeight: 500 }}
+              />
+
+              <Bar dataKey="ganho" barSize={12} radius={[3, 3, 0, 0]} fill="url(#gainGradient)" animationDuration={800} />
+              <Bar dataKey="gasto" barSize={12} radius={[3, 3, 0, 0]} fill="url(#expenseGradient)" animationDuration={800} />
+              <Bar dataKey="deposito" barSize={12} radius={[3, 3, 0, 0]} fill="#A0AEC0" animationDuration={800} />
+
+              <defs>
+                <linearGradient id="gainGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4CAF50" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="#4CAF50" stopOpacity={0.3} />
+                </linearGradient>
+                <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F44336" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="#F44336" stopOpacity={0.3} />
+                </linearGradient>
+              </defs>
             </BarChart>
           </BarResponsiveContainer>
         </div>
       </GraficosContainer>
 
       <FinancialAnalysisBox data={graficoData} />
+      <DividaWrapper />
 
       <TransactionsSidebar
         transacoes={transacoes}
-        onDeleteTransaction={onDeleteTransaction}
+        setTransacoes={setTransacoes}
+        onEditTransaction={handleEditTransaction}
         mesAtual={mesSelecionado}
         setMesAtual={setMesSelecionado}
         anoAtual={anoSelecionado}
         setAnoAtual={setAnoSelecionado}
+        onEdit={handleEditTransaction}
       />
     </Container>
   );

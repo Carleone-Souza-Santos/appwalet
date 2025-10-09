@@ -1,23 +1,65 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 
-const spin = keyframes`
-  0% { transform: rotate(0deg);}
-  100% { transform: rotate(360deg);}
+// ====== Animação de pulso das bolinhas ======
+const bounce = keyframes`
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
 `;
 
-const Loader = styled.div`
-  border: 8px solid #f3f3f3;
-  border-top: 8px solid #003650;
+// ====== Wrapper das bolinhas ======
+const LoaderWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  height: 100vh;
+`;
+
+// ====== Bolinha ======
+const Dot = styled.div<{ delay: string }>`
+  width: 15px;
+  height: 15px;
+  background-color: #003650;
   border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  animation: ${spin} 1s linear infinite;
-  margin: 100px auto;
+  animation: ${bounce} 1.4s infinite ease-in-out;
+  animation-delay: ${({ delay }) => delay};
 `;
 
-export default function CircularLoader() {
-  return <Loader />;
+// ====== Componente Loader ======
+interface LoaderProps {
+  isLoading: boolean;
 }
+
+const CircularLoader: React.FC<LoaderProps> = ({ isLoading }) => {
+  const [show, setShow] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Garante que o componente só monte no lado do cliente
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) {
+      setShow(true);
+    } else {
+      const timer = setTimeout(() => setShow(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
+
+  if (!mounted || !show) return null;
+
+  return (
+    <LoaderWrapper>
+      <Dot delay="0s" />
+      <Dot delay="0.2s" />
+      <Dot delay="0.4s" />
+    </LoaderWrapper>
+  );
+};
+
+export default CircularLoader;

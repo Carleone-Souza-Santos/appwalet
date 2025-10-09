@@ -111,58 +111,84 @@ const ForgotPasswordLink = styled.span`
 `;
 
 export default function Login() {
+  // ====== Estados locais ======
+  // email e password armazenam os valores dos campos do formulário
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Hook do Next.js para navegação programática
   const router = useRouter();
 
+  // ====== Função para login ======
+  // Disparada ao submeter o formulário
   const handleLogin = async (e: FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // Previna comportamento padrão do formulário
+
     try {
+      // Chama Firebase para autenticar usuário
       await signInWithEmailAndPassword(auth, email, password);
+
+      // Redireciona para dashboard se login for bem-sucedido
       router.push("/dashboard");
     } catch (error: any) {
+      // Mostra alerta em caso de erro de login
       alert(`Erro ao logar: ${error.message}`);
     }
   };
 
+  // ====== Função para redefinição de senha ======
   const handleForgotPassword = async () => {
+    // Verifica se o usuário digitou email
     if (!email) {
       alert("Digite seu e-mail para receber o link de redefinição de senha.");
       return;
     }
 
     try {
+      // Envia email de redefinição de senha via Firebase
       await sendPasswordResetEmail(auth, email);
       alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
     } catch (error: any) {
+      // Mostra alerta em caso de erro
       alert(`Erro: ${error.message}`);
     }
   };
 
+  // ====== JSX do componente ======
   return (
     <Container>
       <LoginBox>
+        {/* Título do formulário */}
         <Title>Login</Title>
+
+        {/* Formulário de login */}
         <form onSubmit={handleLogin}>
+          {/* Input de email */}
           <Input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+
+          {/* Input de senha */}
           <Input
             type="password"
             placeholder="Senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+
+          {/* Botão de submit */}
           <Button type="submit">Entrar</Button>
         </form>
 
+        {/* Link para redefinição de senha */}
         <ForgotPasswordLink onClick={handleForgotPassword}>
           Esqueci minha senha
         </ForgotPasswordLink>
 
+        {/* Link alternativo para registro */}
         <AltText>
           Não tem conta? <Link href="/registro">Registrar</Link>
         </AltText>
@@ -170,3 +196,5 @@ export default function Login() {
     </Container>
   );
 }
+
+

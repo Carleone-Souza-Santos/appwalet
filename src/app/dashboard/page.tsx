@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardContent from "@/components/Dashboard";
-import AlertInfo from "@/components/AlertInfo";
 import PageOff from "@/components/PageOff";
 import styled from "styled-components";
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db } from "@/firebase/config";
-import { collection, doc, getDoc } from "firebase/firestore";
+import FreeDaysBadge from "@/components/FreeDaysBadg";
+import CircularLoader from "@/components/CircularLoader";
+import PageOneContact from "@/components/PageOneContact";
 
+// ===== Loading Container =====
 const LoadingContainer = styled.div`
   display: flex;
   align-items: center;
@@ -17,6 +20,7 @@ const LoadingContainer = styled.div`
   min-height: 100vh;
   font-size: 1.5rem;
   color: #333;
+  font-weight: 500;
 `;
 
 export default function DashboardPage() {
@@ -24,50 +28,13 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [remainingDays, setRemainingDays] = useState<number | null>(null); // dias restantes
 
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const checkAuthorization = async () => {
-    if (!user || !user.email) return;
-
-    try {
-      const docRef = doc(collection(db, "usuariosLiberados"), user.email);
-      const docSnap = await getDoc(docRef);
-
-      const approved = docSnap.exists();
-      setIsAuthorized(approved);
-
-      if (!approved && !alertTimeoutRef.current) {
-        alertTimeoutRef.current = setTimeout(() => {
-          setAlertMessage("⚠️ Atenção! Liberação sempre com o administrador.");
-        }, 5000);
-      }
-
-      if (approved) {
-        if (alertTimeoutRef.current) {
-          clearTimeout(alertTimeoutRef.current);
-          alertTimeoutRef.current = null;
-        }
-        setAlertMessage(null);
-      }
-    } catch (err) {
-      console.error("Erro ao verificar autorização:", err);
-      setIsAuthorized(false);
-      setAlertMessage("🚫 Não foi possível verificar sua autorização.");
-    }
-  };
-
-  // Detecta offline/online
+  // ===== Detecta status online/offline =====
   useEffect(() => {
     const handleOffline = () => setIsOffline(true);
-    const handleOnline = () => {
-      setIsOffline(false);
-      if (user) checkAuthorization();
-    };
-
+    const handleOnline = () => setIsOffline(false);
     window.addEventListener("offline", handleOffline);
     window.addEventListener("online", handleOnline);
 
@@ -75,55 +42,81 @@ export default function DashboardPage() {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };
-  }, [user]);
+  }, []);
 
+  // ===== Verifica usuário e permissões =====
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
       return;
     }
+    if (!user) return;
 
-    if (user) {
-      checkAuthorization();
+    const userRef = doc(db, "users", user.uid);
 
-      pollingRef.current = setInterval(() => {
-        checkAuthorization();
-      }, 10000);
-    }
+    const setupUser = async () => {
+      const userSnap = await getDoc(userRef);
 
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
+      if (!userSnap.exists()) {
+        // Cria usuário bloqueado com 14 dias
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || "Usuário",
+          photoURL: user.photoURL || "🚫",
+          role: "bloqueado",
+          day: 14,
+          disabled: false,
+          createdAt: serverTimestamp(),
+        });
+        setIsAuthorized(false);
+        setRemainingDays(14);
+        return;
+      }
+
+      const data = userSnap.data();
+
+      setIsAuthorized(
+        data.role === "liberado" && data.disabled === false && (data.day ?? 0) > 0
+      );
+      setRemainingDays(data.day ?? 0);
+
+      // Atualização em tempo real
+      const unsubscribe = onSnapshot(userRef, (snap) => {
+        const updated = snap.data();
+        if (updated) {
+          setIsAuthorized(
+            updated.role === "liberado" &&
+            updated.disabled === false &&
+            (updated.day ?? 0) > 0
+          );
+          setRemainingDays(updated.day ?? 0);
+        }
+      });
+
+      return () => unsubscribe();
     };
+
+    setupUser();
   }, [user, loading, router]);
 
-  const requirePermission = (action: () => void) => {
-    if (!isAuthorized) {
-      setAlertMessage("🚫 Você não possui permissão para realizar esta ação.");
-      return;
-    }
-    action();
-  };
-
-  if (loading || !user || isAuthorized === null) {
-    return <LoadingContainer>Carregando Dashboard...</LoadingContainer>;
+  // ===== Loading =====
+  if (loading || isAuthorized === null) {
+    return (
+      <LoadingContainer>
+        Carregando Dashboard...
+        <CircularLoader isLoading={loading} />
+      </LoadingContainer>
+    );
   }
 
-  // **Se estiver offline, mostra a página PageOff**
-  if (isOffline) {
-    return <PageOff />;
-  }
+  if (isOffline) return <PageOff />;
+  if (!isAuthorized) return <PageOneContact remainingDays={remainingDays} />;
 
   return (
     <>
-      <DashboardContent requirePermission={requirePermission} />
-      {alertMessage && (
-        <AlertInfo
-          key={alertMessage}
-          message={alertMessage}
-          onClose={() => setAlertMessage(null)}
-        />
-      )}
+      <DashboardContent />
+      <FreeDaysBadge />
     </>
   );
 }

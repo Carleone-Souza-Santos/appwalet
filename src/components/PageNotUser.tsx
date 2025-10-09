@@ -10,11 +10,7 @@ import {
   FaShoppingCart,
 } from "react-icons/fa";
 
-// ==============================
-// 🎨 ESTILOS
-// ==============================
-
-// Container fixo da sidebar à esquerda
+// Container fixo da sidebar
 const SidebarContainer = styled.div`
   position: fixed;
   top: 80px;
@@ -37,32 +33,33 @@ const AnoLabel = styled.h6`
   font-size: 0.8rem;
   font-weight: 800;
   margin: 0;
+  
 `;
 
 // Tooltip exibido ao passar o mouse sobre o ícone
 const Tooltip = styled.div`
   position: absolute;
-  left: 70px; // posiciona à direita do ícone
+  left: 70px;
   background: #333;
   color: #fff;
   padding: 6px 10px;
   border-radius: 8px;
   font-size: 0.75rem;
-  opacity: 0; // inicialmente invisível
-  pointer-events: none; // não interfere no mouse
+  opacity: 0;
+  pointer-events: none;
   transform: translateY(-50%);
   transition: opacity 0.3s ease;
   white-space: nowrap;
 `;
 
-// Wrapper para cada ícone e seu tooltip
+// Wrapper de cada ícone e seu tooltip
 const IconWrapper = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
 
-  // Ao passar o mouse, torna o tooltip visível
+  // Exibe o tooltip ao passar o mouse
   &:hover ${Tooltip} {
     opacity: 1;
   }
@@ -76,12 +73,12 @@ const IconButton = styled.button<{ color?: string }>`
   border: none;
   background: none;
   cursor: pointer;
-  color: ${({ color }) => color || "#628292"}; // cor padrão ou customizada
+  color: ${({ color }) => color || "#628292"};
   font-size: 1.5rem;
   transition: all 0.3s ease;
 
   &:hover {
-    transform: scale(1.2); // efeito de zoom
+    transform: scale(1.2);
   }
 `;
 
@@ -90,26 +87,26 @@ const ValueLabel = styled.span<{ negative?: boolean }>`
   margin-top: 4px;
   font-size: 0.7rem;
   font-weight: bold;
-  color: ${({ negative }) => (negative ? "#F44336" : "#628292")}; // vermelho se negativo
+  color: ${({ negative }) => (negative ? "#F44336" : "#628292")};
   text-align: center;
   white-space: nowrap;
   transition: color 0.3s ease;
 `;
 
-// ==============================
-// 🔧 TIPOS
-// ==============================
+// ==========================
+// Tipos para as propriedades
+// ==========================
 interface SidebarIconsProps {
-  totalGanhoAno: number; // valor total de ganhos
-  totalGastoAno: number; // valor total de gastos
-  totalDepositoAno?: number; // valor total de depósitos (opcional)
-  totalParcelamentoAno?: number; // valor total de parcelamentos (opcional)
-  onClick?: (index: number) => void; // callback ao clicar em algum ícone
+  totalGanhoAno?: number;
+  totalGastoAno?: number;
+  totalDepositoAno?: number;
+  totalParcelamentoAno?: number;
+  onClick?: (index: number) => void;
 }
 
-// ==============================
-//  DADOS
-// ==============================
+// ==========================
+// Dados dos ícones e labels
+// ==========================
 const icons = [
   { component: <FaWallet />, label: "Ganho" },
   { component: <FaShoppingCart />, label: "Gasto" },
@@ -118,40 +115,36 @@ const icons = [
   { component: <FaUniversity />, label: "Depósitos" },
 ];
 
-// ==============================
-//  COMPONENTE
-// ==============================
+// ==========================
+// Componente principal
+// ==========================
 const SidebarIcons: React.FC<SidebarIconsProps> = ({
-  totalGanhoAno,
-  totalGastoAno,
+  totalGanhoAno = 0,
+  totalGastoAno = 0,
   totalDepositoAno = 0,
   totalParcelamentoAno = 0,
   onClick,
 }) => {
   const anoAtual = new Date().getFullYear();
 
-  // Calcula o percentual de gasto em relação ao ganho total
+  // Calcula percentual de gasto em relação ao ganho total
   const percentualGasto =
     totalGanhoAno > 0
       ? ((totalGastoAno + totalDepositoAno) / totalGanhoAno) * 100
       : 0;
 
-  // Define cores condicionais para ícones com base no percentual
+  // Define cores condicionais
   const corCarteira = percentualGasto > 55 ? "#F44336" : "#628292";
   const corGrafico = percentualGasto > 55 ? "#F44336" : "#628292";
 
-  // Função auxiliar para determinar se valor é negativo
   const isNegative = (value: boolean) => (value ? true : undefined);
 
   return (
     <SidebarContainer>
-      {/* Ano no topo */}
       <AnoLabel>{anoAtual}</AnoLabel>
 
-      {/* Mapeia os ícones da sidebar */}
       {icons.map((iconObj, i) => (
         <IconWrapper key={i}>
-          {/* Botão do ícone */}
           <IconButton
             onClick={() => onClick && onClick(i)}
             color={i === 0 ? corCarteira : i === 3 ? corGrafico : "#628292"}
@@ -159,10 +152,8 @@ const SidebarIcons: React.FC<SidebarIconsProps> = ({
             {iconObj.component}
           </IconButton>
 
-          {/* Tooltip exibido ao passar o mouse */}
           <Tooltip>{iconObj.label}</Tooltip>
 
-          {/* Labels com valores/percentuais abaixo dos ícones */}
           {i === 0 && (
             <ValueLabel negative={isNegative(corCarteira === "#F44336")}>
               R$ {totalGanhoAno.toFixed(2)}

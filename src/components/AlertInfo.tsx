@@ -68,24 +68,35 @@ const Message = styled.p`
   color: #333;
   line-height: 1.5;
 `;
-
+// ====== Interface que define as props do componente ======
 interface Props {
-  message: string;
-  onClose: () => void;
+  message: string; // Mensagem que será exibida no alerta
+  onClose: () => void; // Função chamada quando o usuário fecha o alerta
 }
 
+// ====== Componente de alerta informativo ======
 const AlertInfo: React.FC<Props> = ({ message, onClose }) => {
   return (
+    // Overlay que cobre toda a tela para destacar o alerta
     <Overlay>
+      {/* Container central do modal */}
       <ModalContainer>
-        <CloseButton onClick={onClose}><FaTimes size={14} /></CloseButton>
+        {/* Botão de fechar, chama a função onClose ao ser clicado */}
+        <CloseButton onClick={onClose}>
+          <FaTimes size={14} /> {/* Ícone de "X" para fechar */}
+        </CloseButton>
+
+        {/* Ícone de alerta dentro do modal */}
         <IconWrapper>
-          <FaExclamationCircle />
+          <FaExclamationCircle /> {/* Ícone de aviso */}
         </IconWrapper>
+
+        {/* Mensagem de alerta recebida via props */}
         <Message>{message}</Message>
       </ModalContainer>
     </Overlay>
   );
 };
 
+// Exporta o componente para uso em outras partes da aplicação
 export default AlertInfo;
